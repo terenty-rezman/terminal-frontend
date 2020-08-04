@@ -1,9 +1,23 @@
 
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
+import { debounce } from 'debounce'
 
 import './xterm.css'
 import './index.css'
+
+
+function fit_terminal() {
+    let { rows, cols } = fit_addon.proposeDimensions();
+
+    cols = cols < 20 ? 20 : cols;
+    rows = rows < 10 ? 10 : rows;
+
+    terminal.resize(cols, rows);
+
+    const fit_msg = { type: 'f', cols, rows };
+    ws_socket.send(JSON.stringify(fit_msg));
+}
 
 const theme = {
     foreground: "#eee",
@@ -58,16 +72,20 @@ terminal.setOption("cursorBlink", true);
 terminal.loadAddon(fit_addon);
 terminal.open(document.getElementById('terminal-container'));
 
-fit_addon.fit();
 terminal.write('connecting...');
 
-window.onresize = () => fit_addon.fit();
+window.onresize = debounce(fit_terminal, 200);
 
 const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
-const port = 3000 ; location.port;
-const socket_url = protocol + location.hostname + ((location.port) ? (':' + port) : '') + '/terminal/';
+const port = 3000; location.port;
+const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
 
 const ws_socket = new WebSocket(socket_url);
+
+ws_socket.onopen = () => {
+    console.log('connected');
+    fit_terminal();
+};
 
 ws_socket.onmessage = evt => {
     const msg = evt.data;
@@ -75,8 +93,9 @@ ws_socket.onmessage = evt => {
 };
 
 terminal.onData(data => {
-    ws_socket.send(data);
-})
+    const msg = { type: 'm', data: data };
+    ws_socket.send(JSON.stringify(msg));
+});
 
-console.log('connected');
+
 
