@@ -49,16 +49,34 @@ const theme = {
     brightWhite: "#f9f",
 };
 
-const term = new Terminal({ theme });
+const terminal = new Terminal({ theme });
 const fit_addon = new FitAddon();
 
-term.setOption("fontSize", 16);
+terminal.setOption("fontSize", 16);
+terminal.setOption("cursorBlink", true);
 
-term.loadAddon(fit_addon);
-term.open(document.getElementById('terminal-container'));
+terminal.loadAddon(fit_addon);
+terminal.open(document.getElementById('terminal-container'));
 
 fit_addon.fit();
-term.write('Hello from \x1b[31m xtermd \n this is nice \x1b[33mterminal\x1b[33m');
+terminal.write('connecting...');
 
 window.onresize = () => fit_addon.fit();
+
+const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
+const port = 3000 ; location.port;
+const socket_url = protocol + location.hostname + ((location.port) ? (':' + port) : '') + '/terminal/';
+
+const ws_socket = new WebSocket(socket_url);
+
+ws_socket.onmessage = evt => {
+    const msg = evt.data;
+    terminal.write(msg);
+};
+
+terminal.onData(data => {
+    ws_socket.send(data);
+})
+
+console.log('connected');
 
