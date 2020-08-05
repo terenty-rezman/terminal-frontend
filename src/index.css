@@ -7,6 +7,50 @@ html, body {
     overflow: hidden;
 }
 
-#terminal-container {
+.page-container {
+    position: relative;
     height: 100%;
+}
+
+.info-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@keyframes hide-animation {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.run-hide {
+    animation: hide-animation 880ms ease-in;
+}
+
+.info-box {
+    background: #fff;
+    opacity: 0.9;
+    padding: 0.2em 0.5em;
+    border-radius: 5px;
+    font-size: larger;
+    opacity: 0;
+}
+
+.terminal-container {
+    height: 100%;
+}
+
+.xterm-helper-textarea {
+    /* workaround xterm issue #3034 */
+    width: 0 !important;
 }

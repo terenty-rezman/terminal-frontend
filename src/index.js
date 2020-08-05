@@ -83,14 +83,16 @@ const theme = {
     brightWhite: "#f9f",
 };
 
-const terminal = new Terminal({theme});
+const terminal_container_dom = document.querySelector('.terminal-container');
+const info_box_dom = document.querySelector('.info-box');
+const terminal = new Terminal({ theme, rendererType: "canvas" });
 const fit_addon = new FitAddon();
 
-terminal.setOption("fontSize", 17);
+terminal.setOption("fontSize", 16);
 terminal.setOption("cursorBlink", true);
 
 terminal.loadAddon(fit_addon);
-terminal.open(document.getElementById('terminal-container'));
+terminal.open(terminal_container_dom);
 
 terminal.write('connecting...');
 
@@ -116,7 +118,7 @@ ws_socket.onmessage = event => {
     const raw_msg = event.data;
     const msg = JSON.parse(raw_msg);
 
-    switch(msg.type){
+    switch (msg.type) {
         case 'e':
             console.log(msg.msg);
             break
@@ -130,5 +132,17 @@ terminal.onData(data => {
     send_to_server(data);
 });
 
+terminal.onSelectionChange((arg1, arg2) => {
+    document.execCommand('copy');
+
+    // replay animation trick
+    info_box_dom.classList.remove("run-hide");
+    void info_box_dom.offsetWidth;
+    info_box_dom.classList.add("run-hide");
+})
+
+terminal_container_dom.oncontextmenu = evt => {
+    evt.preventDefault();
+}
 
 

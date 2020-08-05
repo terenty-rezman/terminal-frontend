@@ -5,11 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>root terminal</title>
-    <style>html {background-color: #222;}</style> 
+    <style>
+        html {
+            background-color: #222;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="terminal-container"></div>
+    <div class="page-container">
+        <div class="terminal-container"></div>
+        <div class="info-overlay">
+            <div class="info-box">copied</div>
+        </div>
+    </div>
     <script src="main.js"></script>
 </body>
 
