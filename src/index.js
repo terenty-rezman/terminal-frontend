@@ -10,6 +10,7 @@ import './index.css'
 function fit_terminal() {
     let { rows, cols } = fit_addon.proposeDimensions();
 
+    // limit min values
     cols = cols < 20 ? 20 : cols;
     rows = rows < 10 ? 10 : rows;
 
@@ -17,6 +18,25 @@ function fit_terminal() {
 
     const fit_msg = { type: 'f', cols, rows };
     ws_socket.send(JSON.stringify(fit_msg));
+}
+
+// string message buffering
+function buffered(socket, timeout) {
+    let data = '';
+    let sender = null;
+
+    return (chunk) => {
+        data += chunk;
+
+        if (!sender)
+            sender = setTimeout(() => {
+                const msg = { type: 'm', data };
+                socket.send(JSON.stringify(msg));
+
+                data = '';
+                sender = null;
+            }, timeout);
+    };
 }
 
 const theme = {
@@ -63,10 +83,10 @@ const theme = {
     brightWhite: "#f9f",
 };
 
-const terminal = new Terminal({ theme });
+const terminal = new Terminal({theme});
 const fit_addon = new FitAddon();
 
-terminal.setOption("fontSize", 16);
+terminal.setOption("fontSize", 17);
 terminal.setOption("cursorBlink", true);
 
 terminal.loadAddon(fit_addon);
@@ -74,27 +94,40 @@ terminal.open(document.getElementById('terminal-container'));
 
 terminal.write('connecting...');
 
-window.onresize = debounce(fit_terminal, 200);
+window.onresize = debounce(fit_terminal, 100);
 
 const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
 const port = 3000; location.port;
 const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
 
 const ws_socket = new WebSocket(socket_url);
+const send_to_server = buffered(ws_socket, 10);
 
-ws_socket.onopen = () => {
+ws_socket.onopen = event => {
     console.log('connected');
     fit_terminal();
 };
 
-ws_socket.onmessage = evt => {
-    const msg = evt.data;
-    terminal.write(msg);
+ws_socket.onclose = event => {
+    console.log('disconnected');
+};
+
+ws_socket.onmessage = event => {
+    const raw_msg = event.data;
+    const msg = JSON.parse(raw_msg);
+
+    switch(msg.type){
+        case 'e':
+            console.log(msg.msg);
+            break
+        case 'm':
+            terminal.write(msg.data);
+            break;
+    }
 };
 
 terminal.onData(data => {
-    const msg = { type: 'm', data: data };
-    ws_socket.send(JSON.stringify(msg));
+    send_to_server(data);
 });
 
 
