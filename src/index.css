@@ -24,6 +24,10 @@ html, body {
     align-items: center;
 }
 
+.info-overlay .show {
+    opacity: 1;
+}
+
 @keyframes hide-animation {
     from {
         opacity: 1;
@@ -37,9 +41,9 @@ html, body {
     animation: hide-animation 880ms ease-in;
 }
 
+
 .info-box {
     background: #fff;
-    opacity: 0.9;
     padding: 0.2em 0.5em;
     border-radius: 5px;
     font-size: larger;
@@ -47,10 +51,16 @@ html, body {
 }
 
 .terminal-container {
+    min-width: 100px;
+    min-height: 100px;
     height: 100%;
 }
 
 .xterm-helper-textarea {
     /* workaround xterm issue #3034 */
     width: 0 !important;
+}
+
+.xterm .xterm-viewport {
+    overflow-y: hidden;
 }

@@ -35,7 +35,7 @@
  *  Default styles for xterm.js
  */
 
-.xterm {
+ .xterm {
     font-feature-settings: "liga" 0;
     position: relative;
     user-select: none;
@@ -43,7 +43,8 @@
     -webkit-user-select: none;
 }
 
-.xterm.focus, .xterm:focus {
+.xterm.focus,
+.xterm:focus {
     outline: none;
 }
 
@@ -92,7 +93,7 @@
 .xterm .xterm-viewport {
     /* On OS X this is required in order for the scroll bar to appear fully opaque */
     background-color: #000;
-    overflow-y: hidden;
+    overflow-y: scroll;
     cursor: default;
     position: absolute;
     right: 0;
@@ -142,7 +143,8 @@
     cursor: crosshair;
 }
 
-.xterm .xterm-accessibility, .xterm .xterm-message {
+.xterm .xterm-accessibility,
+.xterm .xterm-message {
     position: absolute;
     left: 0;
     top: 0;

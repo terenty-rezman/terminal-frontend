@@ -3,21 +3,49 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { debounce } from 'debounce'
 
+import { OnceConnectedWebSocket } from './OnceConnectedWebSocket.js'
+import { xterm_theme } from './xterm_theme'
+
 import './xterm.css'
 import './index.css'
 
+
+function custom_key_handler(event) {
+    const key = event.code;
+    const ctrl = event.ctrlKey;
+
+    if(key === "KeyC" && ctrl) {
+        if(terminal.hasSelection()) {
+            copy_to_cllipboard();
+            return false;
+        }
+    }
+    else if(key === "KeyV" && ctrl) {
+        document.execCommand('paste');
+        return false;
+    }
+
+    return true;
+}
+
+function copy_to_cllipboard() {
+    document.execCommand('copy');
+    popup_info('copied');
+}
 
 function fit_terminal() {
     let { rows, cols } = fit_addon.proposeDimensions();
 
     // limit min values
     cols = cols < 20 ? 20 : cols;
-    rows = rows < 10 ? 10 : rows;
+    rows = rows < 20 ? 20 : rows;
 
     terminal.resize(cols, rows);
 
-    const fit_msg = { type: 'f', cols, rows };
-    ws_socket.send(JSON.stringify(fit_msg));
+    if (ws_socket.is_connected) {
+        const fit_msg = { type: 'f', cols, rows };
+        ws_socket.send(JSON.stringify(fit_msg));
+    }
 }
 
 // string message buffering
@@ -39,71 +67,54 @@ function buffered(socket, timeout) {
     };
 }
 
-const theme = {
-    foreground: "#eee",
-    /** The default background color */
-    background: "#222",
-    /** The cursor color */
-    cursor: "#eee",
-    /** The accent color of the cursor (fg color for a block cursor) */
-    cursorAccent: "#fce94f",
-    /** The selection background color (can be transparent) */
-    selection: "#888",
-    /** ANSI black (eg. `\x1b[30m`) */
-    black: "#000",
-    /** ANSI red (eg. `\x1b[31m`) */
-    red: "#ef2929",
-    /** ANSI green (eg. `\x1b[32m`) */
-    green: "#4e9a06",
-    /** ANSI yellow (eg. `\x1b[33m`) */
-    yellow: "#fce94f",
-    /** ANSI blue (eg. `\x1b[34m`) */
-    blue: "#729fcf",
-    /** ANSI magenta (eg. `\x1b[35m`) */
-    magenta: "#f9f",
-    /** ANSI cyan (eg. `\x1b[36m`) */
-    cyan: "#f9f",
-    /** ANSI white (eg. `\x1b[37m`) */
-    white: "#fff",
-    /** ANSI bright black (eg. `\x1b[1;30m`) */
-    brightBlack: "#444",
-    /** ANSI bright red (eg. `\x1b[1;31m`) */
-    brightRed: "#f9f",
-    /** ANSI bright green (eg. `\x1b[1;32m`) */
-    brightGreen: "#f9f",
-    /** ANSI bright yellow (eg. `\x1b[1;33m`) */
-    brightYellow: "#f9f",
-    /** ANSI bright blue (eg. `\x1b[1;34m`) */
-    brightBlue: "#f9f",
-    /** ANSI bright magenta (eg. `\x1b[1;35m`) */
-    brightMagenta: "#f9f",
-    /** ANSI bright cyan (eg. `\x1b[1;36m`) */
-    brightCyan: "#f9f",
-    /** ANSI bright white (eg. `\x1b[1;37m`) */
-    brightWhite: "#f9f",
-};
+function create_final_popup(e) {
+    let in_final_state = false;
+
+    return function (msg, final = false) {
+        if (in_final_state)
+            return;
+
+        info_box_dom.textContent = msg;
+
+        if (final) {
+            info_box_dom.classList.remove("run-hide");
+            info_box_dom.classList.add("show");
+            in_final_state = true;
+        }
+        else {
+            // replay animation trick
+            info_box_dom.classList.remove("run-hide");
+            void info_box_dom.offsetWidth;
+            info_box_dom.classList.add("run-hide");
+        }
+    }
+}
+
 
 const terminal_container_dom = document.querySelector('.terminal-container');
 const info_box_dom = document.querySelector('.info-box');
-const terminal = new Terminal({ theme, rendererType: "canvas" });
+const popup_info = create_final_popup();
+
+const terminal = new Terminal({ theme: xterm_theme, rendererType: "canvas" });
 const fit_addon = new FitAddon();
+
+const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
+const port = 3000; location.port;
+const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
+
+const ws_socket = new OnceConnectedWebSocket(socket_url);
+const send_to_server = buffered(ws_socket, 10);
 
 terminal.setOption("fontSize", 16);
 terminal.setOption("cursorBlink", true);
 
 terminal.loadAddon(fit_addon);
 terminal.open(terminal_container_dom);
-
-terminal.write('connecting...');
+terminal.attachCustomKeyEventHandler(custom_key_handler);
 
 window.onresize = debounce(fit_terminal, 100);
 
-const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
-const port = 3000; location.port;
-const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
-
-const ws_socket = new WebSocket(socket_url);
-const send_to_server = buffered(ws_socket, 10);
+terminal.write('connecting...');
 
 ws_socket.onopen = event => {
     console.log('connected');
@@ -112,7 +123,16 @@ ws_socket.onopen = event => {
 
 ws_socket.onclose = event => {
     console.log('disconnected');
+    popup_info('disconnected', true);
 };
+
+ws_socket.onerror = event => {
+    console.log(event);
+}
+
+ws_socket.onreconnect = event => {
+    terminal.write(` \x1b[31mfailed.\x1b[0m\n\rconnecting...`);
+}
 
 ws_socket.onmessage = event => {
     const raw_msg = event.data;
@@ -133,12 +153,13 @@ terminal.onData(data => {
 });
 
 terminal.onSelectionChange((arg1, arg2) => {
-    document.execCommand('copy');
-
-    // replay animation trick
-    info_box_dom.classList.remove("run-hide");
-    void info_box_dom.offsetWidth;
-    info_box_dom.classList.add("run-hide");
+    if(terminal.hasSelection())
+    {
+        const selected = terminal.getSelection().trim();
+        if(selected)
+            copy_to_cllipboard();
+    }
+        
 })
 
 terminal_container_dom.oncontextmenu = evt => {
