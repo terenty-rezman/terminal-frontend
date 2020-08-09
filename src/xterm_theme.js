@@ -6,7 +6,7 @@ export const xterm_theme = {
     /** The cursor color */
     cursor: "#eee",
     /** The accent color of the cursor (fg color for a block cursor) */
-    cursorAccent: "#fff",
+    cursorAccent: "#222",
     /** The selection background color (can be transparent) */
     selection: "#999",
     /** ANSI black (eg. `\x1b[30m`) */

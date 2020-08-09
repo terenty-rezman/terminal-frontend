@@ -38,9 +38,8 @@ html, body {
 }
 
 .run-hide {
-    animation: hide-animation 880ms ease-in;
+    animation: hide-animation 1.1s ease-in;
 }
-
 
 .info-box {
     background: #fff;
@@ -51,8 +50,6 @@ html, body {
 }
 
 .terminal-container {
-    min-width: 100px;
-    min-height: 100px;
     height: 100%;
 }
 

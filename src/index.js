@@ -14,13 +14,13 @@ function custom_key_handler(event) {
     const key = event.code;
     const ctrl = event.ctrlKey;
 
-    if(key === "KeyC" && ctrl) {
-        if(terminal.hasSelection()) {
+    if (key === "KeyC" && ctrl) {
+        if (terminal.hasSelection()) {
             copy_to_cllipboard();
             return false;
         }
     }
-    else if(key === "KeyV" && ctrl) {
+    else if (key === "KeyV" && ctrl) {
         document.execCommand('paste');
         return false;
     }
@@ -36,16 +36,8 @@ function copy_to_cllipboard() {
 function fit_terminal() {
     let { rows, cols } = fit_addon.proposeDimensions();
 
-    // limit min values
-    cols = cols < 20 ? 20 : cols;
-    rows = rows < 20 ? 20 : rows;
-
     terminal.resize(cols, rows);
-
-    if (ws_socket.is_connected) {
-        const fit_msg = { type: 'f', cols, rows };
-        ws_socket.send(JSON.stringify(fit_msg));
-    }
+    console.log(cols, rows);
 }
 
 // string message buffering
@@ -90,12 +82,19 @@ function create_final_popup(e) {
     }
 }
 
-
 const terminal_container_dom = document.querySelector('.terminal-container');
 const info_box_dom = document.querySelector('.info-box');
 const popup_info = create_final_popup();
 
-const terminal = new Terminal({ theme: xterm_theme, rendererType: "canvas" });
+const isWindows = ['Windows', 'Win16', 'Win32', 'WinCE'].indexOf(navigator.platform) >= 0;
+
+const terminal = new Terminal({
+    theme: xterm_theme,
+    rendererType: "dom",
+    windowsMode: isWindows,
+    drawBoldTextInBrightColors: true
+});
+
 const fit_addon = new FitAddon();
 
 const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
@@ -105,7 +104,7 @@ const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
 const ws_socket = new OnceConnectedWebSocket(socket_url);
 const send_to_server = buffered(ws_socket, 10);
 
-terminal.setOption("fontSize", 16);
+terminal.setOption("fontSize", 17);
 terminal.setOption("cursorBlink", true);
 
 terminal.loadAddon(fit_addon);
@@ -113,6 +112,7 @@ terminal.open(terminal_container_dom);
 terminal.attachCustomKeyEventHandler(custom_key_handler);
 
 window.onresize = debounce(fit_terminal, 100);
+window.onload = () => terminal.focus();
 
 terminal.write('connecting...');
 
@@ -152,14 +152,20 @@ terminal.onData(data => {
     send_to_server(data);
 });
 
+terminal.onResize(({ cols, rows }) => {
+    if (ws_socket.is_connected) {
+        const fit_msg = { type: 'f', cols, rows };
+        ws_socket.send(JSON.stringify(fit_msg));
+    }
+})
+
 terminal.onSelectionChange((arg1, arg2) => {
-    if(terminal.hasSelection())
-    {
+    if (terminal.hasSelection()) {
         const selected = terminal.getSelection().trim();
-        if(selected)
+        if (selected)
             copy_to_cllipboard();
     }
-        
+
 })
 
 terminal_container_dom.oncontextmenu = evt => {
