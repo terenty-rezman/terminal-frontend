@@ -90,7 +90,7 @@ const isWindows = ['Windows', 'Win16', 'Win32', 'WinCE'].indexOf(navigator.platf
 
 const terminal = new Terminal({
     theme: xterm_theme,
-    rendererType: "dom",
+    rendererType: "canvas",
     windowsMode: isWindows,
     drawBoldTextInBrightColors: true
 });
@@ -98,8 +98,8 @@ const terminal = new Terminal({
 const fit_addon = new FitAddon();
 
 const protocol = (location.protocol === 'https:') ? 'wss://' : 'ws://';
-const port = 3000; location.port;
-const socket_url = protocol + location.hostname + ':' + port + '/terminal/';
+const port = location.port;
+const socket_url = protocol + location.hostname + ((port) ? (':' + port) : '') + '/terminal/';
 
 const ws_socket = new OnceConnectedWebSocket(socket_url);
 const send_to_server = buffered(ws_socket, 10);
@@ -119,6 +119,7 @@ terminal.write('connecting...');
 ws_socket.onopen = event => {
     console.log('connected');
     fit_terminal();
+    terminal.write('\x1bc'); // clear terminal
 };
 
 ws_socket.onclose = event => {
